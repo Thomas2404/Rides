@@ -1,0 +1,7 @@
+name: Rides
+version: 1.0
+author: Thomas2404
+main: tech.thomas2404.rides.Rides
+api-version: 1.12.2
+commands:
+  ride:
