@@ -1,6 +1,7 @@
 package tech.thomas2404.rides;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -30,8 +31,10 @@ public class Rides extends JavaPlugin {
     Boolean startCountdown = false;
     Boolean riding = false;
     Boolean cancelCountDown = false;
+    Boolean spawnedVehicle;
     int x = 0;
     int y = 0;
+    int z = 0;
 
     @Override
     public void onEnable() {
@@ -60,31 +63,44 @@ public class Rides extends JavaPlugin {
                 Minecart vehicle = (Minecart) world.spawnEntity(startLocation, EntityType.MINECART);
                 ridingPlayers.add(player.getName());
 
-
-
+                //Waits a second before moving the vehicle so a player can get in.
                 new BukkitRunnable() {
-
-                    //Sets up some math for the ride path.
-                    double angle1 = 0D;
-                    double angle2= 0D;
-                    double step1 = ((2 * Math.PI) / 150.0D);
-                    double speed1 = 0.5D;
                     @Override
                     public void run() {
-
-                        //Move the ride vehicle in a circle. Uses sin and cos to make the circle path, and move the vehicle up and down.
-                        vehicle.setVelocity(new Vector(Math.cos(angle1 + 1.5) * speed1, Math.cos(angle2) * speed1, Math.sin(angle1 + 1.5) * speed1));
-                        angle1 += step1;
-                        angle2 += 0.2;
-                        //If the vehicle has gone in a circle twice, stop the ride and despawn the vehicle.
-                        if (angle1 > 13) {
+                        z++;
+                        if (z >= 2) {
+                            z = 0;
                             this.cancel();
-                            ridingPlayers.remove(player.getName());
-                            vehicle.remove();
-                            riding = false;
+
+                            //Starts moving the vehicle.
+                            new BukkitRunnable() {
+
+                                //Sets up some math for the ride path.
+                                double angle1 = 0D;
+                                double angle2= 0D;
+                                double step1 = ((2 * Math.PI) / 150.0D);
+                                double speed1 = 0.5D;
+
+                                @Override
+                                public void run() {
+
+                                    //Move the ride vehicle in a circle. Uses sin and cos to make the circle path, and move the vehicle up and down.
+                                    vehicle.setVelocity(new Vector(Math.cos(angle1 + 1.5) * speed1, Math.cos(angle2) * speed1, Math.sin(angle1 + 1.5) * speed1));
+                                    angle1 += step1;
+                                    angle2 += 0.2;
+                                    //If the vehicle has gone in a circle twice, stop the ride and despawn the vehicle.
+                                    if (angle1 > 13) {
+                                        this.cancel();
+                                        ridingPlayers.remove(player.getName());
+                                        vehicle.remove();
+                                        riding = false;
+                                    }
+                                }
+                            }.runTaskTimer(plugin, 0, 1);
                         }
                     }
-                }.runTaskTimer(plugin, 0, 1);
+                }.runTaskTimer(plugin, 20L, 20L);
+
 
             } else {
                 //Command was sent by a console, print this message.
@@ -107,39 +123,41 @@ public class Rides extends JavaPlugin {
             }
         }
 
+        //Handles the countdown to spawn the ride.
         @EventHandler
         public void nearRide(PlayerMoveEvent event) {
 
+            //Sets up some variables for the countdown.
             Player player = event.getPlayer();
-
             Location location = new Location(Bukkit.getWorld("world"), 100 , 4, 100);
-
             double distance = location.distance(player.getLocation());
 
+            //If the player is within 5 blocks, start the countdown.
             if (distance < 5) {
                 if (!startCountdown && !riding) {
 
+                    //Sets up some stuff for the countdown, and the text screen.
                     startCountdown = true;
                     countingDown.add(player.getName());
-
                     World world = player.getWorld();
                     Location screenLocation = new Location (Bukkit.getWorld("world"), 100, 4, 100);
                     ArmorStand screen = (ArmorStand) world.spawnEntity(screenLocation, EntityType.ARMOR_STAND);
                     screen.setVisible(false);
-                    screen.setCustomName("The ride will spawn in 5 seconds! Please don't leave!");
+                    screen.setCustomName(ChatColor.GRAY + "The ride will spawn in " + ChatColor.RED + "5" + ChatColor.GRAY + " seconds! Please don't leave!");
                     screen.setCustomNameVisible(true);
+                    y = 5;
+                    x = 0;
 
-
-                    Long timeInTicks = 20L;
+                    //Starts the countdown.
                     new BukkitRunnable() {
                         @Override
                         public void run() {
 
                             x++;
                             y--;
+                            screen.setCustomName(ChatColor.GRAY + "The ride will spawn in " + ChatColor.RED + y + ChatColor.GRAY + " seconds! Please don't leave!");
 
-                            screen.setCustomName("The ride will spawn in " + y + " seconds! Please don't leave!");
-
+                            //If the countdown is cancelled, cancel it.
                             if (cancelCountDown) {
                                 startCountdown = false;
                                 countingDown.remove(player.getName());
@@ -149,6 +167,7 @@ public class Rides extends JavaPlugin {
                                 x = 0;
                                 y = 5;
                             }
+                            //If the countdown has gone for 5 seconds, spawn the ride vehicle.
                             if (x >= 5) {
                                 player.chat("/ride");
                                 countingDown.remove(player.getName());
@@ -160,10 +179,11 @@ public class Rides extends JavaPlugin {
                                 y = 5;
                             }
                         }
-                    }.runTaskTimer(plugin, timeInTicks, timeInTicks);
+                    }.runTaskTimer(plugin, 20L, 20L);
                 }
             }
 
+            //If the player leaves the loading area before the countdown finishes, end the countdown.
             if ((distance > 5) && countingDown.contains(player.getName())) {
                 cancelCountDown = true;
                 countingDown.remove(player.getName());
