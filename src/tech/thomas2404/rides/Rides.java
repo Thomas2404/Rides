@@ -25,29 +25,30 @@ import java.util.ArrayList;
 public class Rides extends JavaPlugin {
 
     //Sets up an array so that we can keep certain players from leaving the vehicle while it's moving. Also sets up for the bukkit runnable.
-    Plugin plugin = this;
-    ArrayList<String> ridingPlayers = new ArrayList<>();
-    ArrayList<String> countingDown = new ArrayList<>();
-    Boolean startCountdown = false;
-    Boolean riding = false;
-    Boolean cancelCountDown = false;
-    Boolean spawnedVehicle;
-    int x = 0;
-    int y = 0;
-    int z = 0;
+    private Plugin plugin = this;
+    private ArrayList<String> ridingPlayers = new ArrayList<>();
+    private ArrayList<String> countingDown = new ArrayList<>();
+    private Boolean startCountdown = false;
+    private Boolean riding = false;
+    private Boolean cancelCountDown = false;
+    private  Boolean spawnedVehicle;
+    private int x = 0;
+    private int y = 0;
+    private int z = 0;
 
     @Override
     public void onEnable() {
         //Registers the commands and listeners.
-        this.getCommand("ride").setExecutor(new commandRide());
-        getServer().getPluginManager().registerEvents(new listener(), this);
+        this.getCommand("ride").setExecutor(new CommandRide());
+        getServer().getPluginManager().registerEvents(new EventListener(), this);
     }
 
     @Override
     public void onDisable() {
+        //Stuff to do when the plugin is disabled.
     }
 
-    public class commandRide implements CommandExecutor {
+    public class CommandRide implements CommandExecutor {
 
         @Override
         public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -112,7 +113,7 @@ public class Rides extends JavaPlugin {
     }
 
     //Sets up the listener so that players cant leave the ride vehicle while riding the ride.
-    public class listener implements Listener {
+    public class EventListener implements Listener {
 
         @EventHandler
         public void exitVehicle(VehicleExitEvent event) {
@@ -125,7 +126,7 @@ public class Rides extends JavaPlugin {
 
         //Handles the countdown to spawn the ride.
         @EventHandler
-        public void nearRide(PlayerMoveEvent event) {
+        public void NearRide(PlayerMoveEvent event) {
 
             //Sets up some variables for the countdown.
             Player player = event.getPlayer();
@@ -133,60 +134,58 @@ public class Rides extends JavaPlugin {
             double distance = location.distance(player.getLocation());
 
             //If the player is within 5 blocks, start the countdown.
-            if (distance < 5) {
-                if (!startCountdown && !riding) {
+            if (distance < 5 && !startCountdown && !riding) {
 
-                    //Sets up some stuff for the countdown, and the text screen.
-                    startCountdown = true;
-                    countingDown.add(player.getName());
-                    World world = player.getWorld();
-                    Location screenLocation = new Location (Bukkit.getWorld("world"), 100, 4, 100);
-                    ArmorStand screen = (ArmorStand) world.spawnEntity(screenLocation, EntityType.ARMOR_STAND);
-                    screen.setVisible(false);
-                    screen.setCustomName(ChatColor.GRAY + "The ride will spawn in " + ChatColor.RED + "5" + ChatColor.GRAY + " seconds! Please don't leave!");
-                    screen.setCustomNameVisible(true);
-                    y = 5;
-                    x = 0;
-
+                //Sets up some stuff for the countdown, and the text screen.
+                startCountdown = true;
+                countingDown.add(player.getName());
+                World world = player.getWorld();
+                Location screenLocation = new Location (Bukkit.getWorld("world"), 100, 4, 100);
+                ArmorStand screen = (ArmorStand) world.spawnEntity(screenLocation, EntityType.ARMOR_STAND);
+                screen.setVisible(false);
+                screen.setCustomName(ChatColor.GRAY + "The ride will spawn in " + ChatColor.RED + "5" + ChatColor.GRAY + " seconds! Please don't leave!");
+                screen.setCustomNameVisible(true);
+                y = 5;
+                x = 0;
                     //Starts the countdown.
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
 
-                            x++;
-                            y--;
-                            screen.setCustomName(ChatColor.GRAY + "The ride will spawn in " + ChatColor.RED + y + ChatColor.GRAY + " seconds! Please don't leave!");
+                        x++;
+                        y--;
+                        screen.setCustomName(ChatColor.GRAY + "The ride will spawn in " + ChatColor.RED + y + ChatColor.GRAY + " seconds! Please don't leave!");
 
-                            //If the countdown is cancelled, cancel it.
-                            if (cancelCountDown) {
-                                startCountdown = false;
-                                countingDown.remove(player.getName());
-                                screen.remove();
-                                cancelCountDown = false;
-                                this.cancel();
-                                x = 0;
-                                y = 5;
-                            }
-                            //If the countdown has gone for 5 seconds, spawn the ride vehicle.
-                            if (x >= 5) {
-                                player.chat("/ride");
-                                countingDown.remove(player.getName());
-                                startCountdown = false;
-                                riding = true;
-                                screen.remove();
-                                this.cancel();
-                                x = 0;
-                                y = 5;
-                            }
+                        //If the countdown is cancelled, cancel it.
+                        if (cancelCountDown) {
+                            startCountdown = false;
+                            countingDown.remove(player.getName());
+                            screen.remove();
+                            cancelCountDown = false;
+                            this.cancel();
+                            x = 0;
+                            y = 5;
                         }
-                    }.runTaskTimer(plugin, 20L, 20L);
-                }
+                        //If the countdown has gone for 5 seconds, spawn the ride vehicle.
+                        if (x >= 5) {
+                            player.chat("/ride");
+                            countingDown.remove(player.getName());
+                            startCountdown = false;
+                            riding = true;
+                            screen.remove();
+                            this.cancel();
+                            x = 0;
+                            y = 5;
+                        }
+                    }
+                }.runTaskTimer(plugin, 20L, 20L);
             }
 
             //If the player leaves the loading area before the countdown finishes, end the countdown.
             if ((distance > 5) && countingDown.contains(player.getName())) {
                 cancelCountDown = true;
                 countingDown.remove(player.getName());
+
             }
         }
     }
